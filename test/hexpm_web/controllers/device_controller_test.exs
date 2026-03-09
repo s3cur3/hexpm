@@ -98,7 +98,17 @@ defmodule HexpmWeb.DeviceControllerTest do
       assert redirected_to(conn) =~ "%3Fuser_code%3D"
     end
 
-    test "allows viewing form without sudo mode" do
+    test "redirects to sudo when viewing form without sudo mode" do
+      user = insert(:user)
+      conn = login_user(build_conn(), user, sudo: false)
+
+      conn = get(conn, ~p"/oauth/device")
+
+      assert redirected_to(conn) == "/sudo"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "verify your identity"
+    end
+
+    test "redirects to sudo with return path when viewing form with user_code without sudo mode" do
       user = insert(:user)
       conn = login_user(build_conn(), user, sudo: false)
       client = create_test_client()
@@ -112,12 +122,11 @@ defmodule HexpmWeb.DeviceControllerTest do
       {:ok, response} =
         DeviceCodes.initiate_device_authorization(mock_conn, client.client_id, ["api"])
 
-      # Should be able to view the form without sudo
       conn = get(conn, ~p"/oauth/device?user_code=#{response.user_code}")
-      html = html_response(conn, 200)
 
-      assert html =~ "Device Authorization"
-      assert html =~ "Security Check"
+      assert redirected_to(conn) == "/sudo"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "verify your identity"
+      assert get_session(conn, "sudo_return_to") =~ "user_code="
     end
 
     test "verification flow from pre-filled form to authorization" do
@@ -194,7 +203,7 @@ defmodule HexpmWeb.DeviceControllerTest do
       assert redirected_to(conn) =~ "/login"
     end
 
-    test "redirects to sudo when authorizing device without sudo mode", %{
+    test "redirects to sudo when posting without sudo mode", %{
       user: user,
       device_code: device_code
     } do
@@ -204,22 +213,6 @@ defmodule HexpmWeb.DeviceControllerTest do
         post(conn, ~p"/oauth/device", %{
           "user_code" => device_code.user_code,
           "action" => "authorize"
-        })
-
-      assert redirected_to(conn) == "/sudo"
-      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "verify your identity"
-    end
-
-    test "redirects to sudo when denying device without sudo mode", %{
-      user: user,
-      device_code: device_code
-    } do
-      conn = login_user(build_conn(), user, sudo: false)
-
-      conn =
-        post(conn, ~p"/oauth/device", %{
-          "user_code" => device_code.user_code,
-          "action" => "deny"
         })
 
       assert redirected_to(conn) == "/sudo"
