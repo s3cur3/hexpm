@@ -253,6 +253,21 @@ defmodule HexpmWeb.ViewHelpers do
     |> :erlang.list_to_binary()
   end
 
+  def human_number_compact(nil), do: "0"
+  def human_number_compact(n) when n >= 1_000_000_000, do: format_compact(n / 1_000_000_000, "B")
+  def human_number_compact(n) when n >= 1_000_000, do: format_compact(n / 1_000_000, "M")
+  def human_number_compact(n) when n >= 1_000, do: format_compact(n / 1_000, "K")
+  def human_number_compact(n), do: "#{n}"
+
+  defp format_compact(value, unit) do
+    rounded = Float.round(value, 1)
+
+    case Float.ratio(rounded) do
+      {_, 1} -> "#{trunc(rounded)}#{unit}"
+      {_, _} -> "#{rounded}#{unit}"
+    end
+  end
+
   defp do_human_number(int, max, digits, _unit) when is_integer(int) and digits <= max do
     human_number_space(int)
   end
@@ -260,7 +275,8 @@ defmodule HexpmWeb.ViewHelpers do
   defp do_human_number(int, max, digits, {unit, mag}) when is_integer(int) and digits > max do
     shifted = int / :math.pow(10, mag)
     len = trunc(:math.log10(shifted)) + 2
-    float = Float.round(shifted, max - len)
+    precision = max(0, max - len)
+    float = Float.round(shifted, precision)
 
     case Float.ratio(float) do
       {_, 1} -> human_number_space(trunc(float)) <> unit
@@ -361,10 +377,13 @@ defmodule HexpmWeb.ViewHelpers do
       |> Enum.map(fn p -> points_to_graph(max, p) end)
       |> Enum.zip(x_axis_points(length(points)))
 
-    polyline_points = to_polyline_points(calculated_points)
-    polyline_fill = to_polyline_fill(calculated_points)
+    # Convert {y, x} tuples to {x, y} for path generation
+    xy_points = Enum.map(calculated_points, fn {y, x} -> {x, y} end)
 
-    {y_axis_labels, polyline_points, polyline_fill}
+    line_path = to_smooth_path(xy_points)
+    fill_path = to_smooth_fill(xy_points)
+
+    {y_axis_labels, line_path, fill_path}
   end
 
   defp points_to_graph(max, data) do
@@ -378,15 +397,42 @@ defmodule HexpmWeb.ViewHelpers do
     Enum.map(0..total_points, &Kernel.*(&1, px_per_point))
   end
 
-  defp to_polyline_points(list) do
-    Enum.reduce(list, "", fn {y, x}, acc -> acc <> "#{x}, #{y} " end)
+  @smoothing 0.2
+
+  defp to_smooth_path(points) do
+    [{x0, y0} | _] = points
+    segments = smooth_segments(points)
+    "M#{x0},#{y0}" <> Enum.join(segments)
   end
 
-  defp to_polyline_fill(list) do
-    top = Enum.reduce(list, "", fn {y, x}, acc -> acc <> "#{x}, #{y} " end)
-    {_last_y, last_x} = List.last(list)
-    fill = "#{last_x}, 200 0, 200"
-    top <> fill
+  defp to_smooth_fill(points) do
+    [{x0, y0} | _] = points
+    {xn, _yn} = List.last(points)
+    segments = smooth_segments(points)
+    "M#{x0},#{y0}" <> Enum.join(segments) <> "L#{xn},200L0,200Z"
+  end
+
+  defp smooth_segments(points) do
+    indexed = Enum.with_index(points)
+
+    Enum.map(indexed, fn {{_x, _y}, i} ->
+      if i == length(points) - 1 do
+        ""
+      else
+        {x1, y1} = Enum.at(points, i)
+        {x2, y2} = Enum.at(points, i + 1)
+
+        {px0, py0} = if i > 0, do: Enum.at(points, i - 1), else: {x1, y1}
+        {px3, py3} = if i + 2 < length(points), do: Enum.at(points, i + 2), else: {x2, y2}
+
+        cp1x = Float.round(x1 + (x2 - px0) * @smoothing, 2)
+        cp1y = Float.round(y1 + (y2 - py0) * @smoothing, 2) |> max(0.0) |> min(198.0)
+        cp2x = Float.round(x2 - (px3 - x1) * @smoothing, 2)
+        cp2y = Float.round(y2 - (py3 - y1) * @smoothing, 2) |> max(0.0) |> min(198.0)
+
+        "C#{cp1x},#{cp1y} #{cp2x},#{cp2y} #{x2},#{y2}"
+      end
+    end)
   end
 
   defp y_axis_labels(min, max) do
@@ -411,6 +457,23 @@ defmodule HexpmWeb.ViewHelpers do
       _ -> 100
     end
   end
+
+  def main_repository?(%{repository_id: 1}), do: true
+  def main_repository?(_), do: false
+
+  def readme_url(package_name, version) do
+    readme_url = Application.fetch_env!(:hexpm, :readme_url)
+    "#{readme_url}/#{package_name}/#{version}"
+  end
+
+  def safe_url(url) when is_binary(url) do
+    case URI.parse(url) do
+      %URI{scheme: scheme} when scheme in ["http", "https", "mailto"] -> url
+      _ -> "#"
+    end
+  end
+
+  def safe_url(_), do: "#"
 end
 
 defimpl Phoenix.HTML.Safe, for: Version do

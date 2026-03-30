@@ -16,8 +16,12 @@ config :hexpm,
   docs_url: "http://localhost:4002",
   private_docs_url: "http://localhost:4002",
   diff_url: "http://localhost:4004",
-  preview_url: "http://localhost:4005",
+  preview_url: "http://localhost:4000",
   cdn_url: "http://localhost:4000",
+  img_url: "http://localhost:4000/img",
+  img_proxy_secret: "dev_img_proxy_secret_key_for_hmac",
+  readme_host: "readme.localhost",
+  readme_url: "http://readme.localhost:4000",
   billing_url: "http://localhost:4001",
   billing_key: "hex_billing_key",
   dashboard_user: "hex_user",
@@ -33,14 +37,8 @@ config :hexpm, HexpmWeb.Endpoint,
   secret_key_base: "38K8orQfRHMC6ZWXIdgItQEiumeY+L2Ls0fvYfTMt4AoG5+DSFsLG6vMajNcd5Td",
   live_view: [signing_salt: "2UTSB72sZsF9KTlxefkIrFFPXTO7d+Ep"],
   watchers: [
-    node: [
-      "node_modules/webpack/bin/webpack.js",
-      "--mode",
-      "development",
-      "--watch",
-      "--watch-options-stdin",
-      cd: Path.expand("../assets", __DIR__)
-    ]
+    esbuild: {Esbuild, :install_and_run, [:hexpm, ~w(--sourcemap=inline --watch)]},
+    tailwind: {Tailwind, :install_and_run, [:default, ~w(--watch)]}
   ]
 
 config :hexpm, HexpmWeb.Endpoint,
