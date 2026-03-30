@@ -6,7 +6,7 @@
   </div>
 
   <%= if @pending_action_html do %>
-    <div class="col-sm-9" style="margin-bottom: 20px; margin-top: -20px;">
+    <div class="col-sm-9 billing-pending-action">
       <%= raw(@pending_action_html) %>
     </div>
   <% end %>

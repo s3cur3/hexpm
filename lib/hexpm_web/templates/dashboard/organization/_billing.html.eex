@@ -58,7 +58,7 @@
                 window.hexpm_billing_api_url = "<%= ~p"/dashboard/billing-api" %>";
               </script>
 
-              <div style="display: flex; gap: 10px; align-items: center;">
+              <div class="billing-actions">
                 <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#payment-method-modal">
                   <%= if @card do %>Update payment method<% else %>Add payment method<% end %>
                 </button>
@@ -96,7 +96,7 @@
               </script>
               <%= raw(@checkout_html) %>
 
-              <div style="display: flex; gap: 10px; align-items: center;">
+              <div class="billing-actions">
                 <%= if @subscription && @subscription["cancel_at_period_end"] && @card do %>
                   <%= form_tag(~p"/dashboard/orgs/#{@organization}/resume-billing", class: "resume-billing") do %>
                     <%= submit "Resume subscription", class: "btn btn-success" %>
@@ -123,7 +123,7 @@
                   </div>
                   <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Keep subscription</button>
-                    <%= form_tag(~p"/dashboard/orgs/#{@organization}/cancel-billing", class: "cancel-billing", style: "display: inline") do %>
+                    <%= form_tag(~p"/dashboard/orgs/#{@organization}/cancel-billing", class: "cancel-billing billing-inline-form") do %>
                       <%= submit "Cancel subscription", class: "btn btn-danger" %>
                     <% end %>
                   </div>
@@ -142,7 +142,7 @@
                       <h4 class="modal-title">Add seats</h4>
                     </div>
                     <div class="modal-body">
-                      <div id="add-seats-error" class="alert alert-danger" style="display: none;"></div>
+                      <div id="add-seats-error" class="alert alert-danger billing-error-hidden"></div>
                       You have <%= @quantity %> seats of which <%= length(@organization.organization_users) %> are in use.
                       <br><br>
                       <input type="number" class="form-control change-seats" name="add-seats" min="1" step="1" value="1" required>
@@ -374,7 +374,7 @@
 
         var submitButton = document.getElementById('add-seats-submit');
         var errorDiv = document.getElementById('add-seats-error');
-        errorDiv.style.display = 'none';
+        errorDiv.classList.add('billing-error-hidden');
         submitButton.disabled = true;
         submitButton.textContent = 'Processing...';
 
@@ -418,7 +418,7 @@
           addSeatsForm.submit();
         } catch (error) {
           errorDiv.textContent = error.message || 'Payment authentication failed.';
-          errorDiv.style.display = 'block';
+          errorDiv.classList.remove('billing-error-hidden');
           submitButton.textContent = 'Add seats';
           submitButton.disabled = false;
         }
