@@ -9,6 +9,7 @@ defmodule HexpmWeb.Templates.Dashboard.Security.Components.TFASetupModal do
   import HexpmWeb.ViewIcons, only: [icon: 3]
   import HexpmWeb.Components.Modal
   import HexpmWeb.Components.Buttons, only: [button: 1]
+  import HexpmWeb.Components.Form, only: [sudo_form: 1]
   alias HexpmWeb.ViewHelpers
   use Hexpm.Shared
 
@@ -22,11 +23,10 @@ defmodule HexpmWeb.Templates.Dashboard.Security.Components.TFASetupModal do
 
   ## Examples
 
-      <.tfa_setup_modal user={@current_user} csrf_token={@csrf_token} show={true} />
+      <.tfa_setup_modal user={@current_user} show={true} />
   """
   attr :user, :map, required: true
   attr :tfa_secret, :string, default: nil
-  attr :csrf_token, :string, required: true
   attr :show, :boolean, default: false
   attr :error, :string, default: nil
   attr :form_action, :string, default: nil
@@ -101,12 +101,11 @@ defmodule HexpmWeb.Templates.Dashboard.Security.Components.TFASetupModal do
 
         <%!-- Verification Form --%>
         <%= if @tfa_secret do %>
-          <form
+          <.sudo_form
+            current_user={@user}
             action={~p"/dashboard/security/verify-tfa-code"}
-            method="post"
             id="tfa-verification-form"
           >
-            <input type="hidden" name="_csrf_token" value={@csrf_token} />
             <div class="space-y-4">
               <div>
                 <label
@@ -125,7 +124,8 @@ defmodule HexpmWeb.Templates.Dashboard.Security.Components.TFASetupModal do
                   pattern="[0-9]{6}"
                   autocomplete="off"
                   inputmode="numeric"
-                  oninput="document.getElementById('tfa-submit-btn').disabled = !/^[0-9]{6}$/.test(this.value)"
+                  phx-hook="TFACodeInput"
+                  data-submit-button="tfa-submit-btn"
                   class="w-full px-3 py-2 border border-grey-300 rounded-lg text-center text-xl font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
                 <p class="mt-2 text-xs text-grey-500">
@@ -133,28 +133,26 @@ defmodule HexpmWeb.Templates.Dashboard.Security.Components.TFASetupModal do
                 </p>
               </div>
             </div>
-          </form>
+            <div class="flex items-center justify-end gap-3 mt-6">
+              <.button
+                type="button"
+                variant="secondary"
+                phx-click={hide_modal("tfa-setup-modal")}
+              >
+                Cancel
+              </.button>
+              <.button
+                id="tfa-submit-btn"
+                type="submit"
+                variant="primary"
+                disabled
+              >
+                Enable Two-Factor Authentication
+              </.button>
+            </div>
+          </.sudo_form>
         <% end %>
       </div>
-
-      <:footer>
-        <.button
-          type="button"
-          variant="secondary"
-          phx-click={hide_modal("tfa-setup-modal")}
-        >
-          Cancel
-        </.button>
-        <.button
-          id="tfa-submit-btn"
-          type="button"
-          variant="primary"
-          disabled
-          onclick="document.getElementById('tfa-verification-form').submit()"
-        >
-          Enable Two-Factor Authentication
-        </.button>
-      </:footer>
     </.modal>
     """
   end
