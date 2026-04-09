@@ -51,8 +51,8 @@ defmodule HexpmWeb.Components.Footer do
         icon={:github}
       />
       <.social_link
-        href="https://twitter.com/hexpm"
-        label="Twitter"
+        href="https://x.com/hexpm"
+        label="X"
         icon={:twitter}
       />
     </div>

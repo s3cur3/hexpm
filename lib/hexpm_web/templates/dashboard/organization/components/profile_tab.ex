@@ -115,8 +115,8 @@ defmodule HexpmWeb.Dashboard.Organization.Components.ProfileTab do
                     form={fh}
                     field={:twitter}
                     icon={:twitter}
-                    label="Twitter"
-                    placeholder="Twitter username"
+                    label="X"
+                    placeholder="X username"
                   />
                   <.social_input
                     form={fh}

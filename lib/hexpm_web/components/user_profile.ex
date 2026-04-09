@@ -120,7 +120,7 @@ defmodule HexpmWeb.Components.UserProfile do
     """
   end
 
-  defp service_to_icon("Twitter"), do: :twitter
+  defp service_to_icon("X.com"), do: :twitter
   defp service_to_icon("GitHub"), do: :github
   defp service_to_icon("Bluesky"), do: :bluesky
   defp service_to_icon("Elixir Forum"), do: :elixirforum
