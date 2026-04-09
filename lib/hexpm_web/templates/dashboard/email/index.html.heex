@@ -7,10 +7,15 @@
       </div>
 
       <%!-- Right Content --%>
-      <div class="flex-1 min-w-0">
+      <div class="flex-1 min-w-0 space-y-4 sm:space-y-8">
         <.email_management_card
           emails={@emails}
           create_changeset={@create_changeset}
+          current_user={@current_user}
+        />
+        <.email_options_card
+          optional_email_types={@optional_email_types}
+          optional_email_preferences={@optional_email_preferences}
           current_user={@current_user}
         />
       </div>
