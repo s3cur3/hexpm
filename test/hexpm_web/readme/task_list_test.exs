@@ -79,6 +79,59 @@ defmodule HexpmWeb.Readme.TaskListTest do
              ] = items
     end
 
+    test "nested list inside TODO list is rendered normally" do
+      unchecked_cb = checkbox(false)
+
+      ast =
+        parse_and_convert("""
+        - [ ] TODO
+          - Not a task
+        """)
+
+      assert [{"ul", _attrs, items, _meta}] = ast
+
+      assert [{"li", _, [^unchecked_cb, "TODO", nested], _}] = items
+      assert {"ul", _, [{"li", _, ["Not a task"], _}], _} = nested
+    end
+
+    test "converts nested TODO lists" do
+      unchecked_cb = checkbox(false)
+      checked_cb = checkbox(true)
+
+      ast =
+        parse_and_convert("""
+        - [ ] nested
+          - [X] TODO
+            * [x] list
+        """)
+
+      [{"ul", _attrs, items, _meta}] = ast
+
+      assert [{"li", _, [^unchecked_cb, "nested", {"ul", _, nested1, _}], _}] = items
+      assert [{"li", _, [^checked_cb, "TODO", {"ul", _, nested2, _}], _}] = nested1
+      assert [{"li", _, [^checked_cb, "list"], _}] = nested2
+    end
+
+    test "converts ordered TODO list inside list" do
+      unchecked_cb = checkbox(false)
+      checked_cb = checkbox(true)
+
+      ast =
+        parse_and_convert("""
+        - TODO
+          1. [x] Task1
+          2. [ ] Task2
+        """)
+
+      assert [{"ul", _attrs, [{"li", _, ["TODO", items], _}], _}] = ast
+
+      assert {"ol", _,
+              [
+                {"li", _, [^checked_cb, "Task1"], _},
+                {"li", _, [^unchecked_cb, "Task2"], _}
+              ], _} = items
+    end
+
     test "mixed list with checkboxes and normal items" do
       unchecked_cb = checkbox(false)
       checked_cb = checkbox(true)
