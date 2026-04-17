@@ -11,12 +11,12 @@ defmodule Hexpm.Repository.Releases do
     |> Release.sort()
   end
 
-  def recent(repository, count) do
-    Repo.all(Release.recent(repository, count))
-  end
-
   def count() do
     Repo.one!(Release.count())
+  end
+
+  def recent(repository, count) do
+    Repo.all(Release.recent(repository, count))
   end
 
   def get(package, version) do
@@ -51,7 +51,6 @@ defmodule Hexpm.Repository.Releases do
     |> create_release(package, user, inner_checksum, outer_checksum, meta, replace?)
     |> audit_publish(audit_data)
     |> Repo.transaction(timeout: @publish_timeout)
-    |> refresh_package_dependants()
     |> publish_result(user, body)
   end
 
@@ -77,7 +76,6 @@ defmodule Hexpm.Repository.Releases do
     |> Multi.run(:release_count, &release_count/2)
     |> Multi.run(:package, &maybe_delete_package/2)
     |> Repo.transaction(timeout: @publish_timeout)
-    |> refresh_package_dependants()
     |> revert_result()
   end
 
@@ -208,24 +206,6 @@ defmodule Hexpm.Repository.Releases do
         params = %{version: Hexpm.Version}
         change = Ecto.Changeset.cast({%{}, params}, %{version: version}, ~w(version)a)
         Ecto.Multi.error(multi, :version, change)
-    end
-  end
-
-  defp refresh_package_dependants(result) do
-    Task.Supervisor.start_child(Hexpm.Tasks, fn ->
-      Hexpm.Repo.refresh_view(Hexpm.Repository.PackageDependant)
-    end)
-    |> check_alive()
-
-    result
-  end
-
-  defp check_alive({:ok, pid}) do
-    if Process.alive?(pid) do
-      Process.sleep(1)
-      check_alive({:ok, pid})
-    else
-      {:ok, pid}
     end
   end
 
