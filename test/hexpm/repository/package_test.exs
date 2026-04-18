@@ -2,7 +2,7 @@ defmodule Hexpm.Repository.PackageTest do
   use Hexpm.DataCase
 
   alias Hexpm.Accounts.User
-  alias Hexpm.Repository.{Package, Repository}
+  alias Hexpm.Repository.{Package, Packages, Repository}
 
   setup do
     user = insert(:user)
@@ -263,6 +263,53 @@ defmodule Hexpm.Repository.PackageTest do
     insert(:requirement, release: rel, dependency: ecto, requirement: "~> 1.0")
 
     assert ["phoenix"] = search_for(repository, "depends:#{repository.name}:poison")
+  end
+
+  test "dependants query filters by dependency package id", %{repository: repository} do
+    private_repo = insert(:repository)
+    poison = insert(:package, name: "poison", repository_id: repository.id)
+    ecto = insert(:package, name: "ecto", repository_id: private_repo.id)
+    phoenix = insert(:package, name: "phoenix", repository_id: repository.id)
+
+    rel = insert(:release, package: ecto)
+    insert(:requirement, release: rel, dependency: poison, requirement: "~> 1.0")
+    rel = insert(:release, package: phoenix)
+    insert(:requirement, release: rel, dependency: poison, requirement: "~> 1.0")
+
+    assert 1 = Package.count_dependants([repository], poison) |> Repo.one!()
+
+    assert ["phoenix"] =
+             Package.dependants([repository], poison, 1, 10, :name, nil)
+             |> Repo.all()
+             |> Enum.map(& &1.name)
+  end
+
+  test "depends search can return private packages if caller passes a broad repository list", %{
+    repository: repository
+  } do
+    private_repo = insert(:repository)
+    dependency = insert(:package, name: "dependency", repository_id: repository.id)
+    public_match = insert(:package, name: "public_match", repository_id: repository.id)
+    private_match = insert(:package, name: "private_match", repository_id: private_repo.id)
+
+    insert(:release, package: dependency, version: "1.0.0")
+
+    rel = insert(:release, package: public_match, version: "1.0.0")
+    insert(:requirement, release: rel, dependency: dependency, requirement: "~> 1.0")
+
+    rel = insert(:release, package: private_match, version: "1.0.0")
+    insert(:requirement, release: rel, dependency: dependency, requirement: "~> 1.0")
+
+    assert ["private_match", "public_match"] =
+             Packages.search(
+               [repository, private_repo],
+               1,
+               10,
+               "depends:#{repository.name}:#{dependency.name}",
+               :name,
+               nil
+             )
+             |> Enum.map(& &1.name)
   end
 
   test "search build tools", %{repository: repository} do
